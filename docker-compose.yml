@@ -1,0 +1,15 @@
+version: '2.1'
+services:
+  mysql:
+    environment:
+      - MYSQL_ALLOW_EMPTY_PASSWORD=1
+    image: mysql
+  spec:
+    build: .
+    depends_on:
+      - mysql
+    volumes:
+      - .:/hyper-mesh
+    environment:
+      - MYSQL_HOST=mysql
+    command: bash -c 'spec/test_app/bin/setup && bundle exec rake spec'
