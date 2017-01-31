@@ -43,7 +43,7 @@ Gem::Specification.new do |s|
 
     s.add_development_dependency 'pusher'
     s.add_development_dependency 'pusher-fake'
-    s.add_development_dependency 'opal-browser'
+    # NOTE see Gemfile, will not work: s.add_development_dependency 'opal-browser'
 
     if RUBY_PLATFORM == 'java'
       s.add_development_dependency 'jdbc-sqlite3'
@@ -77,6 +77,6 @@ Gem::Specification.new do |s|
       s.add_development_dependency 'unparser'
       s.add_development_dependency 'jquery-rails'
       s.add_development_dependency 'pry-byebug'
-      #s.add_development_dependency 'hyper-trace'
+      # NOTE see Gemfile, will not work: s.add_development_dependency 'hyper-trace'
     end
 end
