@@ -12,6 +12,7 @@
 require 'set'
 if RUBY_ENGINE == 'opal'
   require "hyper-react"
+  require 'hyper-operation'
   require 'active_support'
   require 'time'
   require 'date'
@@ -19,6 +20,8 @@ if RUBY_ENGINE == 'opal'
   require "reactive_record/active_record/error"
   require "reactive_record/server_data_cache"
   require "reactive_record/active_record/reactive_record/while_loading"
+  require "reactive_record/active_record/reactive_record/operations"
+  require 'synchromesh/broadcast'
   require "reactive_record/active_record/reactive_record/isomorphic_base"
   require 'reactive_record/active_record/reactive_record/dummy_value'
   require 'reactive_record/active_record/reactive_record/column_types'
@@ -42,23 +45,26 @@ if RUBY_ENGINE == 'opal'
 else
   require 'opal'
   require 'hyper-react'
+  require 'hyper-operation'
   require "reactive_record/permissions"
-  require "reactive_record/engine"
+  #require "reactive_record/engine"
   require "reactive_record/server_data_cache"
+  require "reactive_record/active_record/reactive_record/operations"
+  require 'synchromesh/broadcast'
   require "reactive_record/active_record/reactive_record/isomorphic_base"
   require "reactive_record/active_record/public_columns_hash"
   require "reactive_record/serializers"
   require "reactive_record/pry"
   require_relative 'active_record_base'
   require 'hypermesh/version'
-  require 'synchromesh/connection'
-  require 'synchromesh/synchromesh'
-  require 'synchromesh/policy'
-  require 'synchromesh/synchromesh_controller'
+  #require 'synchromesh/connection'
+  #require 'synchromesh/synchromesh'
+  #require 'synchromesh/policy'
+  #require 'synchromesh/synchromesh_controller'
 
   Opal.append_path File.expand_path('../sources/', __FILE__).untaint
   Opal.append_path File.expand_path('../', __FILE__).untaint
   Opal.append_path File.expand_path('../../vendor', __FILE__).untaint
 end
 require 'enumerable/pluck'
-require_relative 'synchromesh/client_drivers'
+#require_relative 'synchromesh/client_drivers'

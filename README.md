@@ -142,7 +142,7 @@ See the Pusher-Fake gem repo for details.
 
 - Forgetting to add `require pusher` in application.js file  
 this results in an error like this:   
-  ```text 
+  ```text
   Exception raised while rendering #<TopLevelRailsComponent:0x53e>
       ReferenceError: Pusher is not defined
   ```  
@@ -232,9 +232,9 @@ HyperMesh is the merger of `reactive-record` and `synchromesh` gems.  As such a 
 The original `ReactiveRecord` specs were written in opal-rspec.  These are being migrated to
 use server rspec with isomorphic helpers.  There are about 170 of the original tests left and to run these you
 
-1. cd to `reactive_record_spec/test_app`
+1. cd to `reactive_record_test_app`
 2. do a bundle install/update as needed,
-3. `rake db:reset db:test:prepare`,
+3. `bundle exec rake db:reset db:test:prepare`,
 4. start the server: `bundle exec rails s`,
 5. then visit `localhost:3000/spec-opal`.
 

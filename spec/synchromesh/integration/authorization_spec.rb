@@ -4,7 +4,7 @@ require 'synchromesh/integration/test_components'
 describe "authorization integration", js: true do
 
   before(:all) do
-    # HyperMesh.configuration do |config|
+    # Hyperloop.configuration do |config|
     #   config.transport = :simple_poller
     #   # slow down the polling so wait_for_ajax works
     #   config.opts = { seconds_between_poll: 2 }
@@ -17,7 +17,7 @@ describe "authorization integration", js: true do
     Pusher.secret = "MY_TEST_SECRET"
     require "pusher-fake/support/base"
 
-    HyperMesh.configuration do |config|
+    Hyperloop.configuration do |config|
       config.transport = :pusher
       config.channel_prefix = "synchromesh"
       config.opts = {app_id: Pusher.app_id, key: Pusher.key, secret: Pusher.secret}.merge(PusherFake.configuration.web_options)
@@ -46,6 +46,7 @@ describe "authorization integration", js: true do
   before(:each) do
     # spec_helper resets the policy system after each test so we have to setup
     # before each test
+    User
     stub_const "User", Class.new
     User.class_eval do
       include ActiveModel::Model
@@ -68,7 +69,7 @@ describe "authorization integration", js: true do
     wait_for_ajax
     model1.attributes_on_client(page).should eq({id: 1})
     ApplicationController.acting_user = User.new(name: "fred")
-    page.evaluate_ruby('HyperMesh.connect("TestApplication")')
+    page.evaluate_ruby('Hyperloop.connect("TestApplication")')
     wait_for_ajax
     model1.update_attribute(:test_attribute, 'george')
     wait_for_ajax
@@ -78,7 +79,7 @@ describe "authorization integration", js: true do
       updated_at: model1.updated_at.localtime.strftime('%Y-%m-%dT%H:%M:%S%z')
     })
     ApplicationController.acting_user = User.new(name: "george")
-    page.evaluate_ruby("HyperMesh.connect(['TestModel', #{model1.id}])")
+    page.evaluate_ruby("Hyperloop.connect(['TestModel', #{model1.id}])")
     wait_for_ajax
     model1.update_attribute(:completed, true)
     wait_for_ajax
@@ -92,7 +93,7 @@ describe "authorization integration", js: true do
   it "will fail on illegal class connections" do
     mount "TestComponent2"
     model1 = FactoryGirl.create(:test_model, test_attribute: "hello")
-    page.evaluate_ruby('HyperMesh.connect("TestApplication")')
+    page.evaluate_ruby('Hyperloop.connect("TestApplication")')
     model1.update_attribute(:test_attribute, 'george')
     wait_for_ajax
     model1.attributes_on_client(page).should eq({id: 1})
@@ -102,7 +103,7 @@ describe "authorization integration", js: true do
     mount "TestComponent2"
     model1 = FactoryGirl.create(:test_model, test_attribute: "george")
     ApplicationController.acting_user = User.new(name: "fred")
-    page.evaluate_ruby("HyperMesh.connect(['TestModel', #{model1.id}])")
+    page.evaluate_ruby("Hyperloop.connect(['TestModel', #{model1.id}])")
     model1.update_attribute(:completed, true)
     wait_for_ajax
     model1.attributes_on_client(page).should eq({id: 1})

@@ -4,7 +4,7 @@ require 'synchromesh/integration/test_components'
 describe "dictionary examples", js: true do
 
 
-  HyperMesh.configuration do |config|
+  Hyperloop.configuration do |config|
     config.transport = :action_cable
     config.channel_prefix = "synchromesh"
   end
