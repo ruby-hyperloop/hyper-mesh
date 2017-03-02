@@ -18,7 +18,7 @@ PATH
       opal-activesupport
 
 PATH
-  remote: ../
+  remote: ..
   specs:
     hyper-mesh (0.5.4)
       activerecord (>= 0.3.0)
@@ -229,4 +229,4 @@ DEPENDENCIES
   web-console
 
 BUNDLED WITH
-   1.12.5
+   1.14.3
