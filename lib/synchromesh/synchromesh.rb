@@ -83,8 +83,8 @@ module HyperMesh
   end
 
   def self.refresh_channels
-    new_channels = pusher.channels[:channels].collect do |channel|
-      channel.gsub(/^#{Regexp.quote(HyperMesh.channel)}/,'')
+    pusher.channels[:channels].keys.map do |channel|
+      channel.gsub(/^#{Regexp.quote(HyperMesh.channel)}-/, '')
     end
   end
 
