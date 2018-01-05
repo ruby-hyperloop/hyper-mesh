@@ -28,6 +28,7 @@ module ReactiveRecord
 
     attr_accessor :ar_instance
     attr_accessor :vector
+    attr_accessor :graph
     attr_accessor :model
     attr_accessor :changed_attributes
     attr_accessor :aggregate_owner
@@ -58,6 +59,7 @@ module ReactiveRecord
     end
 
     def self.load_from_json(json, target = nil)
+      # TODO -> load from json graph
       load_data { ServerDataCache.load_from_json(json, target) }
     end
 
@@ -69,7 +71,6 @@ module ReactiveRecord
     #   # @sync_blocks[watch_model][sync_model][scope_name][...array of blocks...]
     #   @sync_blocks ||= Hash.new { |hash, key| hash[key] = Hash.new { |hash, key| hash[key] = Hash.new { |hash, key| hash[key] = [] } } }
     # end
-
 
     def self.find(model, attribute, value)
       # will return the unique record with this attribute-value pair
@@ -87,7 +88,7 @@ module ReactiveRecord
           record = @records[model].detect { |record| record.id == id}
         end
         # if we don't have a record then create one
-        (record = new(model)).vector = [model, ["find_by_#{attribute}", value]] unless record
+        (record = new(model)).graph = Graph.new(model.model_name, ["find_by_#{attribute}", value]) unless record
         # and set the value
         record.sync_attribute(attribute, value)
         # and set the primary if we have one

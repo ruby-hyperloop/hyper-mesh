@@ -96,7 +96,14 @@ module ReactiveRecord
 
       if RUBY_ENGINE != 'opal'
 
+        def self.something_wrong(vector, method = nil)
+          ::Rails.logger.warn "\033[0;31;1mWARNING: ServerDataCache: Something wrong with vector:\033[0;30;21m#{' tried method: ' + method.to_s + ' of:'if method} #{vector}"
+          raise ActiveRecord::Rollback, "Something wrong with vector:#{' tried method: ' + method.to_s + ' of:'if method} #{vector}!"
+        end
+
         def [](*vector)
+          # only allow access to AR:Base descendants and public models
+          self.class.something_wrong(vector) unless ActiveRecord::Base.public_columns_hash.has_key?(vector[0])
           root = CacheItem.new(@cache, @acting_user, vector[0], @preloaded_records)
           vector[1..-1].inject(root) { |cache_item, method| cache_item.apply_method method if cache_item }
           vector[0] = vector[0].constantize
@@ -144,6 +151,10 @@ module ReactiveRecord
           attr_reader :root
           attr_reader :acting_user
 
+          def self.critical_methods
+            @@critical_methods ||= (Object.methods + Kernel.methods).uniq
+          end
+
           def value
             @value # which is a ActiveRecord object
           end
@@ -175,8 +186,25 @@ module ReactiveRecord
           def apply_method_to_cache(method)
             @db_cache.inject(nil) do |representative, cache_item|
               if cache_item.vector == vector
-                if @value.class < ActiveRecord::Base and @value.attributes.has_key?(method)
-                  @value.check_permission_with_acting_user(@acting_user, :view_permitted?, method)
+                if @value.class < ActiveRecord::Base
+                  unless @value.attributes.has_key?(method) || (@value.methods - CacheItem.critical_methods).include?(method.to_sym) || (method.is_a?(String) && method.start_with?('*'))
+                    ServerDataCache.something_wrong(vector, method)
+                  end
+                  if @value.attributes.has_key?(method)
+                    @value.check_permission_with_acting_user(@acting_user, :view_permitted?, method)
+                  end
+                elsif @value.class == Class && @value < ActiveRecord::Base
+                  method_to_check = method.is_a?(Array) ? method[0] : method
+                  unless method_to_check.start_with?('*') || %w[unscoped find find_by].include?(method_to_check) || (@value.methods - CacheItem.critical_methods).include?(method_to_check.to_sym)
+                    ServerDataCache.something_wrong(vector, method)
+                  end
+                elsif @value.class < ActiveRecord::Relation
+                  method_to_check = method.is_a?(Array) ? method[0] : method
+                  unless method_to_check.start_with?('*') || (@value.methods - CacheItem.critical_methods).include?(method_to_check.to_sym)
+                    ServerDataCache.something_wrong(vector, method)
+                  end
+                else
+                  ServerDataCache.something_wrong(vector, method)
                 end
                 if method == "*"
                   cache_item.apply_star || representative

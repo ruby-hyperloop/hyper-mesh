@@ -15,6 +15,7 @@ module ReactiveRecord
     @load_stack << @loads_pending
     @loads_pending = nil
     result = block.call.itself
+    # TODO possible bug, @loads_pending is always nil? unless set by block
     if @loads_pending
       @blocks_to_load ||= []
       @blocks_to_load << [Base.last_fetch_at, promise, block]
@@ -33,7 +34,7 @@ module ReactiveRecord
 
   def self.check_loads_pending
     if @loads_pending
-      if Base.pending_fetches.count > 0
+      if Base.pending_fetches.has_nodes?
         true
       else  # this happens when for example loading foo.x results in somebody looking at foo.y while foo.y is still being loaded
         ReactiveRecord::WhileLoading.loaded_at Base.last_fetch_at

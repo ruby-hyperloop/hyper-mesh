@@ -33,8 +33,13 @@ module ActiveRecord
 
         alias pre_synchromesh_default_scope default_scope
 
+        def hyper_model_scopes
+          @hyper_model_scopes ||= []
+        end
+
         def scope(name, *args, &block)
           opts = _synchromesh_scope_args_check(args)
+          hyper_model_scopes << name.to_sym
           pre_synchromesh_scope(name, opts[:server], &block)
         end
 
@@ -44,7 +49,12 @@ module ActiveRecord
         end
 
         def server_method(name, opts = {}, &block)
+          server_methods << name.to_sym
           define_method(name, &block)
+        end
+
+        def server_methods
+          @server_methods ||= []
         end
 
         def finder_method(name, &block)

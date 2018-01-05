@@ -1,30 +1,32 @@
 module ReactiveRecord
   class Broadcast
 
-    def self.after_commit(operation, model)
-      Hyperloop::InternalPolicy.regulate_broadcast(model) do |data|
-        if !Hyperloop.on_server? && Hyperloop::Connection.root_path
-          send_to_server(operation, data)
-        else
-          SendPacket.run(data, operation: operation)
+    if RUBY_ENGINE != 'opal'
+      def self.after_commit(operation, model)
+        Hyperloop::InternalPolicy.regulate_broadcast(model) do |data|
+          if !Hyperloop.on_server? && Hyperloop::Connection.root_path
+            send_to_server(operation, data)
+          else
+            SendPacket.run(data, operation: operation)
+          end
         end
-      end
-    rescue ActiveRecord::StatementInvalid => e
-      raise e unless e.message == "Could not find table 'hyperloop_connections'"
-    end unless RUBY_ENGINE == 'opal'
+      rescue ActiveRecord::StatementInvalid => e
+        raise e unless e.message == "Could not find table 'hyperloop_connections'"
+      end 
 
-    def self.send_to_server(operation, data)
-      salt = SecureRandom.hex
-      authorization = Hyperloop.authorization(salt, data[:channel], data[:broadcast_id])
-      raise 'no server running' unless Hyperloop::Connection.root_path
-      SendPacket.remote(
-        Hyperloop::Connection.root_path,
-        data,
-        operation: operation,
-        salt: salt,
-        authorization: authorization
-      )
-    end unless RUBY_ENGINE == 'opal'
+      def self.send_to_server(operation, data)
+        salt = SecureRandom.hex
+        authorization = Hyperloop.authorization(salt, data[:channel], data[:broadcast_id])
+        raise 'no server running' unless Hyperloop::Connection.root_path
+        SendPacket.remote(
+          Hyperloop::Connection.root_path,
+          data,
+          operation: operation,
+          salt: salt,
+          authorization: authorization
+        )
+      end
+    end
 
     class SendPacket < Hyperloop::ServerOp
       param authorization: nil, nils: true

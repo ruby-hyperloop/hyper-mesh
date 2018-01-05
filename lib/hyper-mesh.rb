@@ -38,6 +38,8 @@ if RUBY_ENGINE == 'opal'
 else
   require 'opal'
   require 'hyper-operation'
+  require "reactive_record/access_violation"
+  require "hyperloop/internal_policy"
   require "reactive_record/permissions"
   require "reactive_record/server_data_cache"
   require "reactive_record/active_record/reactive_record/operations"

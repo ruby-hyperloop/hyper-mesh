@@ -1,34 +1,3 @@
-module ReactiveRecord
-  class AccessViolation < StandardError
-    def message
-      "ReactiveRecord::AccessViolation: #{super}"
-    end
-  end
-end
-
-module Hyperloop
-  class InternalPolicy
-
-    def self.accessible_attributes_for(model, acting_user)
-      user_channels = ClassConnectionRegulation.connections_for(acting_user, false) +
-        InstanceConnectionRegulation.connections_for(acting_user, false)
-      internal_policy = InternalPolicy.new(model, model.attribute_names, user_channels)
-      ChannelBroadcastRegulation.broadcast(internal_policy)
-      InstanceBroadcastRegulation.broadcast(model, internal_policy)
-      internal_policy.accessible_attributes_for
-    end
-
-    def accessible_attributes_for
-      accessible_attributes = Set.new
-      @channel_sets.each do |channel, attribute_set|
-        accessible_attributes.merge attribute_set
-      end
-      accessible_attributes << :id unless accessible_attributes.empty?
-      accessible_attributes
-    end
-  end
-end
-
 class ActiveRecord::Base
 
   attr_accessor :acting_user

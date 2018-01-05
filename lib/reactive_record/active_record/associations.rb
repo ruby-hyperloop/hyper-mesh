@@ -7,6 +7,7 @@ module ActiveRecord
     end
 
     def self.reflect_on_association(attribute)
+      # TODO same as with aggregations, but see above
       if found = reflect_on_all_associations.detect { |association| association.attribute == attribute and association.owner_class == self }
         found
       elsif superclass == Base

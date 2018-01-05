@@ -11,6 +11,7 @@ module ReactiveRecord
       column_hash[:sql_type_metadata] && column_hash[:sql_type_metadata][:type]
     end
 
+    # TODO possible bug: DateTime != Time, precision mysql and pg matters?
     def convert_datetime(val)
       if val.is_a?(Numeric)
         Time.at(val)
@@ -39,6 +40,7 @@ module ReactiveRecord
     end
 
     def convert_integer(val)
+      # TODO why parseInt? Integer() does the same?
       Integer(`parseInt(#{val})`)
     end
 

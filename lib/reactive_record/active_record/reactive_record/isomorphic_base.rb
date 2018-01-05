@@ -17,7 +17,7 @@ module ReactiveRecord
         @records = Hash.new { |hash, key| hash[key] = [] }
         @class_scopes = Hash.new { |hash, key| hash[key] = {} }
         if on_opal_client?
-          @pending_fetches = []
+          @pending_fetches = ReactiveRecord::Graph.new
           @pending_records = []
           @last_fetch_at = Time.now
           unless `typeof window.ReactiveRecordInitialData === 'undefined'`
@@ -111,7 +111,7 @@ module ReactiveRecord
       raise "attempt to do a find_by_id of nil.  This will return all records, and is not allowed" if vector[1] == ["find_by_id", nil]
       vector = [record.model.model_name, ["new", record.object_id]]+vector[1..-1] if vector[0].nil?
       unless data_loading?
-        @pending_fetches << vector
+        @pending_fetches.merge_request_vector(record.model.model_name, vector)
         @pending_records << record if record
         schedule_fetch
       end
@@ -134,14 +134,13 @@ module ReactiveRecord
 
     def self.schedule_fetch
       @fetch_scheduled ||= after(0) do
-        if @pending_fetches.count > 0  # during testing we might reset the context while there are pending fetches otherwise this would never normally happen
+        if @pending_fetches.has_nodes?  # during testing we might reset the context while there are pending fetches otherwise this would never normally happen
           last_fetch_at = @last_fetch_at
           @last_fetch_at = Time.now
-          pending_fetches = @pending_fetches.uniq
           models, associations = gather_records(@pending_records, false, nil)
           log(["Server Fetching: %o", pending_fetches.to_n])
           start_time = Time.now
-          Operations::Fetch.run(models: models, associations: associations, pending_fetches: pending_fetches)
+          Operations::Fetch.run(models: models, associations: associations, pending_fetches: @pending_fetches)
             .then do |response|
               fetch_time = Time.now
               log("       Fetched in:   #{(fetch_time - start_time).to_f}s")
@@ -161,7 +160,7 @@ module ReactiveRecord
               # not sure what response was supposed to look like here was response.body before conversion to operations....
               ReactiveRecord.run_blocks_to_load(last_fetch_at, response)
             end
-          @pending_fetches = []
+          @pending_fetches = ReactiveRecord::Graph.new
           @pending_records = []
           @fetch_scheduled = nil
         end

@@ -303,7 +303,7 @@ module ReactiveRecord
 
     alias_method :length, :count
 
-    # WHY IS THIS NEEDED?  Perhaps it was just for debug
+    # TODO WHY IS THIS NEEDED?  Perhaps it was just for debug
     def collect(*args, &block)
       all.collect(*args, &block)
     end

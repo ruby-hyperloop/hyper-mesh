@@ -1,4 +1,4 @@
-# add mehods to Object to determine if this is a dummy object or not
+# add methods to Object to determine if this is a dummy object or not
 class Object
   def loaded?
     !loading?
@@ -41,6 +41,8 @@ module ReactiveRecord
 
       def build_default_value_for_datetime
         if @column_hash[:default]
+          # TODO possible bug
+          # why '+00:00', what if that is given? difference between mysql and pg precision matters here?
           Time.parse(@column_hash[:default].gsub(' ','T')+'+00:00')
         else
           ::ReactiveRecord::Base::DummyValue.dummy_time
@@ -107,6 +109,7 @@ module ReactiveRecord
       end
 
       def method_missing(method, *args, &block)
+        # TODO use method.start_with? for speedp
         if method =~ /^build_default_value_for_/
           nil
         elsif @object || @object.respond_to?(method)
@@ -182,11 +185,11 @@ module ReactiveRecord
       end
 
       def self.dummy_time
-        @dummy_time ||= Time.parse('2001-01-01T00:00:00.000-00:00')
+        @dummy_time ||= Time.now
       end
 
       def self.dummy_date
-        @dummy_date ||= Date.parse('1/1/2001')
+        @dummy_date ||= Date.today
       end
 
       def to_date

@@ -3,10 +3,15 @@ module ActiveRecord
   class Base
 
     def self.reflect_on_all_aggregations
+      # TODO there should be a aggregation hash
+      # and this should be @aggregation_hash.keys
       base_class.instance_eval { @aggregations ||= [] }
     end
 
     def self.reflect_on_aggregation(attribute)
+      # TODO this is maybe slow, maybe not
+      # instead there should be a hash of aggregations, which may be slow too
+      # and the detect replaced by a hash lookup
       reflect_on_all_aggregations.detect { |aggregation| aggregation.attribute == attribute }
     end
 
@@ -22,7 +27,7 @@ module ActiveRecord
       attr_reader :constructor
 
       def construct(args)
-
+        # TODO whats this here?
       end
 
       def initialize(owner_class, macro, name, options = {})

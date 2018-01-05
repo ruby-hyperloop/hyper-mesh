@@ -37,7 +37,8 @@ module ActiveRecord
     end
 
     def model_name
-      # in reality should return ActiveModel::Name object, blah blah
+      # TODO in reality should return ActiveModel::Name object, blah blah
+      # an d this may be relavant for I18n, check hyper-i18n
       name
     end
 
@@ -143,6 +144,7 @@ module ActiveRecord
     ]
 
     def method_missing(name, *args, &block)
+      # TODO use start_with? instead of regexp
       if args.count == 1 && name =~ /^find_by_/ && !block
         find_by(name.gsub(/^find_by_/, "") => args[0])
       elsif !SERVER_METHODS.include?(name)
