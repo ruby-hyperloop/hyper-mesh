@@ -197,13 +197,13 @@ module ReactiveRecord
             @db_cache.inject(nil) do |representative, cache_item|
               if cache_item.vector == vector
                 if method == "*"
-                  @value.check_permission_with_acting_user(@acting_user, :send_permitted?, :id)
+                  @value.check_permission_with_acting_user(@acting_user, :view_permitted?, :id)
                   cache_item.apply_star || representative
                 elsif method == "*all"
-                  @value.check_permission_with_acting_user(@acting_user, :send_permitted?, :id)
+                  @value.check_permission_with_acting_user(@acting_user, :view_permitted?, :id)
                   cache_item.build_new_cache_item(cache_item.value.collect { |record| record.id }, method, method)
                 elsif method == "*count"
-                  @value.check_permission_with_acting_user(@acting_user, :send_permitted?, :id)
+                  @value.check_permission_with_acting_user(@acting_user, :view_permitted?, :id)
                   cache_item.build_new_cache_item(cache_item.value.count, method, method)
                 elsif preloaded_value = @preloaded_records[cache_item.absolute_vector + [method]]
                   cache_item.build_new_cache_item(preloaded_value, method, method)
@@ -211,7 +211,8 @@ module ReactiveRecord
                   cache_item.build_new_cache_item(aggregation.mapping.collect { |attribute, accessor| cache_item.value[attribute] }, method, method)
                 elsif !cache_item.value || cache_item.value.class == Array
                   representative
-                elsif @value.check_permission_with_acting_user(@acting_user, :send_permitted?, method)
+                else
+                  @value.check_permission_with_acting_user(@acting_user, :send_permitted?, method)
                   begin
                     cache_item.build_new_cache_item(cache_item.value.send(*method), method, method)
                   rescue Exception => e
@@ -219,9 +220,6 @@ module ReactiveRecord
                     ::Rails.logger.debug "\033[0;31;1mERROR: HyperModel exception caught when applying #{method} to db object #{cache_item.value}: #{e}\033[0;30;21m"
                     raise e, "HyperModel fetching records failed, exception caught when applying #{method} to db object #{cache_item.value}: #{e}", e.backtrace
                   end
-                else
-                  ::Rails.logger.debug "\033[0;31;1mERROR: Access Violation when applying #{method} to db object #{cache_item.value}: #{e}\033[0;30;21m"
-                  raise ReactiveRecord::AccessViolation, "Attempt to apply #{method} to db object #{cache_item.value}"
                 end
               else
                 representative
