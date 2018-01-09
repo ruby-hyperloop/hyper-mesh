@@ -33,8 +33,13 @@ module ActiveRecord
 
         alias pre_synchromesh_default_scope default_scope
 
+        def legal_methods
+          @legal_methods ||= Set.new
+        end
+
         def scope(name, *args, &block)
           opts = _synchromesh_scope_args_check(args)
+          legal_methods << name.to_sym
           pre_synchromesh_scope(name, opts[:server], &block)
         end
 
@@ -44,10 +49,12 @@ module ActiveRecord
         end
 
         def server_method(name, opts = {}, &block)
+          legal_methods << name.to_sym
           define_method(name, &block)
         end
 
         def finder_method(name, &block)
+          legal_methods << :"_#{name}"
           singleton_class.send(:define_method, "_#{name}") do |*args|
             [block.call(*args)]
           end

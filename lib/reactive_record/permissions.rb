@@ -37,6 +37,19 @@ class ActiveRecord::Base
     Hyperloop::InternalPolicy.accessible_attributes_for(self, acting_user).include? attribute.to_sym
   end
 
+  def send_permitted?(method_expression)
+    return view_permitted?(method_expression) if attributes.key? method_expression
+    method = [*method_expression].first.to_sym
+    if legal_methods.include?(method) || self.class.reflect_association(method)
+      true
+    elsif method =~ /^find_by_/
+      method = method.to_s.gsub('find_by', '')
+      view_permitted?(method) if attributes.key? method
+    elsif method == :find
+      view_permitted?(:id)
+    end
+  end
+
   def create_permitted?
     false
   end
@@ -102,7 +115,6 @@ class ActiveRecord::Base
       belongs_to_without_reactive_record_add_is_method(attr_name, scope, options)
     end
   end
-
 
   def check_permission_with_acting_user(user, permission, *args)
     old = acting_user

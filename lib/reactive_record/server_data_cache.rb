@@ -97,11 +97,19 @@ module ReactiveRecord
 
       if RUBY_ENGINE != 'opal'
 
-        # SECURITY - UNSAFE
+        def get_model(str)
+          # TODO move this hyper-operation and replace existing get_ar_model so it doesn't use AR::Base
+          unless Hyperloop::InternalClassPolicy.regulated_classes.include? str
+            Hyperloop::InternalPolicy.raise_operation_access_violation
+          end
+          str.constantize
+        end
+
+        # SECURITY - NOW SAFE
         def [](*vector)
           root = CacheItem.new(@cache, @acting_user, vector[0], @preloaded_records)
           vector[1..-1].inject(root) { |cache_item, method| cache_item.apply_method method if cache_item }
-          vector[0] = vector[0].constantize # TODO: Security
+          vector[0] = get_model(vector[0])
           last_value = nil
           @cache.each do |cache_item|
             next if cache_item.root != root || @requested_cache_items.include?(cache_item)
@@ -162,18 +170,18 @@ module ReactiveRecord
             @vector.last
           end
 
-          # SECURITY - UNSAFE
+          # SECURITY - NOW SAFE
           def self.new(db_cache, acting_user, klass, preloaded_records)
-            klass_constant = klass.constantize # TODO: Security Risk
+            klass_constant = get_model(klass)
             if existing = db_cache.detect { |cached_item| cached_item.vector == [klass_constant] }
               return existing
             end
             super
           end
 
-          # SECURITY - UNSAFE
+          # SECURITY - NOW SAFE
           def initialize(db_cache, acting_user, klass, preloaded_records)
-            klass = klass.constantize # TODO: Security
+            klass = get_model(klass)
             @db_cache = db_cache
             @acting_user = acting_user
             @vector = @absolute_vector = [klass]
@@ -188,34 +196,32 @@ module ReactiveRecord
           def apply_method_to_cache(method)
             @db_cache.inject(nil) do |representative, cache_item|
               if cache_item.vector == vector
-                # TODO: Security - this is the wrong check in the wrong place...
-                if @value.class < ActiveRecord::Base and @value.attributes.has_key?(method) # TODO: second check is not needed, its built into  check_permmissions,  check should be does class respond to check_permissions...
-                  @value.check_permission_with_acting_user(@acting_user, :view_permitted?, method)
-                end
                 if method == "*"
+                  @value.check_permission_with_acting_user(@acting_user, :send_permitted?, :id)
                   cache_item.apply_star || representative
                 elsif method == "*all"
+                  @value.check_permission_with_acting_user(@acting_user, :send_permitted?, :id)
                   cache_item.build_new_cache_item(cache_item.value.collect { |record| record.id }, method, method)
                 elsif method == "*count"
+                  @value.check_permission_with_acting_user(@acting_user, :send_permitted?, :id)
                   cache_item.build_new_cache_item(cache_item.value.count, method, method)
                 elsif preloaded_value = @preloaded_records[cache_item.absolute_vector + [method]]
                   cache_item.build_new_cache_item(preloaded_value, method, method)
                 elsif aggregation = cache_item.aggregation?(method)
                   cache_item.build_new_cache_item(aggregation.mapping.collect { |attribute, accessor| cache_item.value[attribute] }, method, method)
-                else
-                  if !cache_item.value || cache_item.value.class == Array
-                    representative
-                  else
-                    # TODO: Security.  Protect the send(*method). But its complicated.. method can be an attribute, scope, relationship or actual method.
-                    #                  Each needs some protection logic.
-                    begin
-                      cache_item.build_new_cache_item(cache_item.value.send(*method), method, method)
-                    rescue Exception => e
-                      # ReactiveRecord::Pry::rescued(e)
-                      ::Rails.logger.debug "\033[0;31;1mERROR: HyperModel exception caught when applying #{method} to db object #{cache_item.value}: #{e}\033[0;30;21m"
-                      raise e, "HyperModel fetching records failed, exception caught when applying #{method} to db object #{cache_item.value}: #{e}", e.backtrace
-                    end
+                elsif !cache_item.value || cache_item.value.class == Array
+                  representative
+                elsif @value.check_permission_with_acting_user(@acting_user, :send_permitted?, method)
+                  begin
+                    cache_item.build_new_cache_item(cache_item.value.send(*method), method, method)
+                  rescue Exception => e
+                    # ReactiveRecord::Pry::rescued(e)
+                    ::Rails.logger.debug "\033[0;31;1mERROR: HyperModel exception caught when applying #{method} to db object #{cache_item.value}: #{e}\033[0;30;21m"
+                    raise e, "HyperModel fetching records failed, exception caught when applying #{method} to db object #{cache_item.value}: #{e}", e.backtrace
                   end
+                else
+                  ::Rails.logger.debug "\033[0;31;1mERROR: Access Violation when applying #{method} to db object #{cache_item.value}: #{e}\033[0;30;21m"
+                  raise ReactiveRecord::AccessViolation, "Attempt to apply #{method} to db object #{cache_item.value}"
                 end
               else
                 representative
@@ -233,7 +239,7 @@ module ReactiveRecord
             end
           end
 
-          # SECURITY - SAFE
+          # SECURITY - SAFE  NOTE FOR consistency permission is checked in apply_method_to_cache
           def apply_star
             if @value && @value.length > 0
               i = -1
@@ -344,59 +350,60 @@ keys:
     if value is a hash
 =end
 
+      if RUBY_ENGINE == 'opal'
+        def self.load_from_json(tree, target = nil)
+          ignore_all = nil
 
-      def self.load_from_json(tree, target = nil)
-        ignore_all = nil
+          # have to process *all before any other items
+          # we leave the "*all" key in just for debugging purposes, and then skip it below
 
-        # have to process *all before any other items
-        # we leave the "*all" key in just for debugging purposes, and then skip it below
+          if sorted_collection = tree["*all"]
+            target.replace sorted_collection.collect { |id| target.proxy_association.klass.find(id) }
+          end
 
-        if sorted_collection = tree["*all"]
-          target.replace sorted_collection.collect { |id| target.proxy_association.klass.find(id) }
-        end
-
-        if id_value = tree["id"] and id_value.is_a? Array
-          target.id = id_value.first
-        end
-        tree.each do |method, value|
-          method = JSON.parse(method) rescue method
-          new_target = nil
-          if method == "*all"
-            next # its already been processed above
-          elsif !target
-            load_from_json(value, Object.const_get(method))
-          elsif method == "*count"
-            target.set_count_state(value.first)
-          elsif method.is_a? Integer or method =~ /^[0-9]+$/
-            new_target = target.push_and_update_belongs_to(method)
-            #target << (new_target = target.proxy_association.klass.find(method))
-          elsif method.is_a? Array
-            if method[0] == "new"
-              new_target = ReactiveRecord::Base.find_by_object_id(target.base_class, method[1])
+          if id_value = tree["id"] and id_value.is_a? Array
+            target.id = id_value.first
+          end
+          tree.each do |method, value|
+            method = JSON.parse(method) rescue method
+            new_target = nil
+            if method == "*all"
+              next # its already been processed above
+            elsif !target
+              load_from_json(value, Object.const_get(method))
+            elsif method == "*count"
+              target.set_count_state(value.first)
+            elsif method.is_a? Integer or method =~ /^[0-9]+$/
+              new_target = target.push_and_update_belongs_to(method)
+              #target << (new_target = target.proxy_association.klass.find(method))
+            elsif method.is_a? Array
+              if method[0] == "new"
+                new_target = ReactiveRecord::Base.find_by_object_id(target.base_class, method[1])
+              elsif !(target.class < ActiveRecord::Base)
+                new_target = target.send(*method)
+                # value is an array if scope returns nil, so we destroy the bogus record
+                new_target.destroy and new_target = nil if value.is_a? Array
+              else
+                target.backing_record.update_attribute([method], target.backing_record.convert(method, value.first))
+              end
+            elsif target.class.respond_to?(:reflect_on_aggregation) and aggregation = target.class.reflect_on_aggregation(method) and
+            !(aggregation.klass < ActiveRecord::Base)
+              target.send "#{method}=", aggregation.deserialize(value.first)
+            elsif value.is_a? Array
+              target.send "#{method}=", value.first unless method == "id" # we handle ids first so things sync nicely
+            elsif value.is_a? Hash and value[:id] and value[:id].first and association = target.class.reflect_on_association(method)
+              # not sure if its necessary to check the id above... is it possible to for the method to be an association but not have an id?
+              new_target = association.klass.find(value[:id].first)
+              target.send "#{method}=", new_target
             elsif !(target.class < ActiveRecord::Base)
               new_target = target.send(*method)
               # value is an array if scope returns nil, so we destroy the bogus record
               new_target.destroy and new_target = nil if value.is_a? Array
             else
-              target.backing_record.update_attribute([method], target.backing_record.convert(method, value.first))
+              new_target = target.send("#{method}=", target.send(method))
             end
-          elsif target.class.respond_to?(:reflect_on_aggregation) and aggregation = target.class.reflect_on_aggregation(method) and
-          !(aggregation.klass < ActiveRecord::Base)
-            target.send "#{method}=", aggregation.deserialize(value.first)
-          elsif value.is_a? Array
-            target.send "#{method}=", value.first unless method == "id" # we handle ids first so things sync nicely
-          elsif value.is_a? Hash and value[:id] and value[:id].first and association = target.class.reflect_on_association(method)
-            # not sure if its necessary to check the id above... is it possible to for the method to be an association but not have an id?
-            new_target = association.klass.find(value[:id].first)
-            target.send "#{method}=", new_target
-          elsif !(target.class < ActiveRecord::Base)
-            new_target = target.send(*method)
-            # value is an array if scope returns nil, so we destroy the bogus record
-            new_target.destroy and new_target = nil if value.is_a? Array
-          else
-            new_target = target.send("#{method}=", target.send(method))
+            load_from_json(value, new_target) if new_target
           end
-          load_from_json(value, new_target) if new_target
         end
       end
     end
