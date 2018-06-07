@@ -2,10 +2,13 @@ module ActiveRecord
 
   module ClassMethods
 
-    alias _new_without_sti_type_cast new
+    # this may break something
+    if method_defined?(:new)
+      alias _new_without_sti_type_cast new
 
-    def new(*args, &block)
-      _new_without_sti_type_cast(*args, &block).cast_to_current_sti_type
+      def new(*args, &block)
+        _new_without_sti_type_cast(*args, &block).cast_to_current_sti_type
+      end
     end
 
     def base_class
