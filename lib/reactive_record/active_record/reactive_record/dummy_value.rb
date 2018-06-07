@@ -157,7 +157,7 @@ module ReactiveRecord
 
       alias inspect to_s
 
-      `#{self}.$$proto.toString = Opal.Object.$$proto.toString`
+      `#{self}.prototype.toString = Opal.Object.prototype.toString`
 
       def to_f
         notify
