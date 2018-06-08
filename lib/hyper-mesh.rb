@@ -48,6 +48,7 @@ else
   require "reactive_record/server_data_cache"
   require "reactive_record/active_record/reactive_record/operations"
   require 'reactive_record/broadcast'
+  require 'reactive_record/active_record/reactive_record/rematerialize'
   require "reactive_record/active_record/reactive_record/isomorphic_base"
   require "reactive_record/active_record/public_columns_hash"
   require "reactive_record/serializers"

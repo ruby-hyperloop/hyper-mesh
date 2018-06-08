@@ -510,6 +510,12 @@ module ReactiveRecord
         end
       end
 
+      def self.save_records(*args)
+        Rematerialize.new(*args).run
+      rescue Exception => e
+        binding.pry
+      end
+
     end
 
     # destroy records
