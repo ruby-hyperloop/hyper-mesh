@@ -78,7 +78,7 @@ module ActiveRecord
           sibling.klass.reflect_on_all_associations.select do |assoc|
             assoc.source == attribute
           end
-        end.flatten
+        end.flatten(1)
       end
 
       def inverse
